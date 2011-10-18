@@ -1,7 +1,8 @@
 #!/usr/bin/env ruby
 
 require 'rubygems'
-require 'mongo'
+require 'bundler'
+Bundler.require(:default) if defined?(Bundler)
 
 class Summarizer
   def initialize
@@ -14,8 +15,8 @@ class Summarizer
   # do the processing (which will consume most of the CPU) and one to
   # periodically do housekeeping but sleeps most of the time.
   def run
-    # Caputre these two signals so if you hit CTRL+C or kill the daemon, it
-    # will exit cleanly.  Setting @interrputed to true tells our threads to
+    # Capture these two signals so if you hit CTRL+C or kill the daemon, it
+    # will exit cleanly.  Setting @interrupted to true tells our threads to
     # finish what they're working on and then exit.
     trap("INT") { @interrupted = true; puts " Exiting cleanly..." }
     trap("TERM") { @interrupted = true; puts " Exiting cleanly..." }

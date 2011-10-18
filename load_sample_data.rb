@@ -17,7 +17,7 @@ open('surnames.txt') do |file|
 end
 
 begin
-  collection.drop_index('sleep_until_1_last_processed_1')
+  collection.drop_index('sleep_until_-1_reserved_at_1_last_processed_-1')
   collection.drop_index('reserved_at_1')
 rescue Exception => e
   # do nothing
@@ -33,5 +33,5 @@ usernames.sort {|a,b| rand <=> 0.5}.each do |username|
                      :counter=>0})
 end
 
-collection.ensure_index([[:sleep_until,1],[:last_processed,1]])
+collection.ensure_index([[:sleep_until,-1],[:reserved_at,1],[:last_processed,-1]])
 collection.ensure_index([[:reserved_at,1]])
