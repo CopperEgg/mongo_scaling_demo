@@ -10,7 +10,7 @@ usernames = []
 open('surnames.txt') do |file|
   while !file.eof?
     surname = file.gets.downcase.gsub(/\s/, '')
-    ('a'..'z').each do |letter|
+    ('a'..'b').each do |letter|
       usernames << "#{letter}_#{surname}"
     end
   end

@@ -57,8 +57,8 @@ class Summarizer
         log "Summarized #{uid} (#{duration}s)"
         release_reservation(uid)
       else
-        log "No work to do.  Sleeping 3 seconds."
-        watchful_sleep 3
+        log "No work to do.  Sleeping 1 second."
+        watchful_sleep 1
       end
     end
   end
@@ -70,7 +70,7 @@ class Summarizer
   def reserve_user
     doc = @mongo.db('app').collection('users').find_and_modify(
         :query=>{:sleep_until=>{:$lt=>Time.now.to_i}, :reserved_at=>0},
-        :sort=>[[:last_processed,-1]],
+        #:sort=>[[:last_processed,-1]],
         :update=>{:$set=>{:reserved_at=>Time.now.to_i}})
     return nil if !doc
     return doc['_id']
