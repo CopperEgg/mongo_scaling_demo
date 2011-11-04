@@ -65,7 +65,7 @@ class Summarizer
         sleep 0.1 + rand/25
 
         duration = ((Time.now.to_f - starttime) * 10000).round / 10000.0
-        log "Processed #{doc['location']} => #{doc['date']} (#{duration}s)"
+        log "Processed => location:#{doc['location']}, date:#{doc['date']} (#{duration} seconds)"
         release_reservation(doc)
       else
         log "No work to do.  Sleeping 1 second."
