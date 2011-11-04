@@ -49,13 +49,24 @@ class Summarizer
   # there is no more work to do, then sleeps for a bit.
   def process_data
     while !@interrupted
-      uid = reserve_user
-      if uid
+      doc = reserve_item
+      if doc
         starttime = Time.now.to_f
-        sleep rand/1000 # This is where you'll do your actual work.
+
+        # update the summary data
+        @mongo.db('weather').collection('summaries').update(
+              {:_id=>doc['location']},
+              {:$inc=>{:avg_temp_total=>doc['temp'],
+                      :avg_temp_count=>1,
+                      :avg_dewp_total=>doc['dewp'],
+                      :avg_dewp_count=>1}},
+              {:upsert=>true});
+        # sleep for a little bit to simulate a workload
+        sleep 0.1 + rand/25
+
         duration = ((Time.now.to_f - starttime) * 10000).round / 10000.0
-        log "Summarized #{uid} (#{duration}s)"
-        release_reservation(uid)
+        log "Processed #{doc['location']} => #{doc['date']} (#{duration}s)"
+        release_reservation(doc)
       else
         log "No work to do.  Sleeping 1 second."
         watchful_sleep 1
@@ -64,41 +75,34 @@ class Summarizer
   end
 
   ##########
-  # Atomically makes a reservation in MongoDB for the next user that needs to
-  # be processed.  A user id is returned representing the user we have a
-  # reservation on.  If no user needs processed right now, nil is returned.
-  def reserve_user
-    doc = @mongo.db('app').collection('users').find_and_modify(
-        :query=>{:sleep_until=>{:$lt=>Time.now.to_i}, :reserved_at=>0},
-        #:sort=>[[:last_processed,-1]],
+  # Atomically makes a reservation in MongoDB for the next item that needs to
+  # be processed.  The item's document is returned representing the item we have a
+  # reservation on.  If nothing needs processed right now, nil is returned.
+  def reserve_item
+    doc = @mongo.db('weather').collection('queue').find_and_modify(
+        :query=>{:reserved_at=>0},
         :update=>{:$set=>{:reserved_at=>Time.now.to_i}})
     return nil if !doc
-    return doc['_id']
+    return doc
   end
 
   ##########
-  # Takes a user id representing a reservation you have taken (returned from
-  # reserve_user) and removes the reservation so this user can be processed
-  # later.  It also sets the sleep_until time in the future so we don't sit in
-  # a tight loop constantly spinning on the same site with no work to do.
-  def release_reservation(uid)
-    @mongo.db('app').collection('users').update(
-        {:_id=>uid},
-        {:$set=>{:reserved_at=>0,
-                 :last_processed=>Time.now.to_i,
-                 :sleep_until=>Time.now.to_i+5}})
+  # Takes a document representing a reservation you have taken (returned from
+  # reserve_item) and removes it from the queue.
+  def release_reservation(doc)
+    @mongo.db('weather').collection('queue').remove({:_id=>doc['_id']})
   end
 
   ##########
   # We need to periodically check for stale reservations, because a daemon could
-  # crash before it releases its reservation.  We want that user to eventually be
-  # processed so after a sufficient amount of time, we will release the user so
+  # crash before it releases its reservation.  We want that item to eventually be
+  # processed so after a sufficient amount of time, we will release the item so
   # it can be processed again.  The timeout should be long enough that any work
   # should have been done already, but short enough that there won't be a
   # noticeable delay to the end user.
   def release_stale_reservations
-    res = @mongo.db('app').collection('users').update(
-        {:reserved_at=>{:$lt=>Time.now.to_i-30, :$gt=>0}},
+    res = @mongo.db('weather').collection('queue').update(
+        {:reserved_at=>{:$lt=>Time.now.to_i-30}},
         {:$set=>{:reserved_at=>0}},
         {:multi=>true, :safe=>true});
     log "Released #{res['n']} stale reservations."
