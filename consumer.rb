@@ -2,12 +2,12 @@
 
 require 'rubygems'
 require 'bundler'
+require 'pp'
 Bundler.require(:default) if defined?(Bundler)
 
-class Summarizer
+class Consumer
   def initialize
     @interrupted = false
-    @mongo = Mongo::Connection.new
   end
 
   ##########
@@ -36,9 +36,11 @@ class Summarizer
   # This loop is run in a thread from the run method.  It sleeps most of the
   # time but wakes up periodically to do some housekeeping.
   def housekeeping
+    @mongo = Mongo::Connection.new
+    log_yellow "Launching housekeeping thread (YELLOW)"
     while !@interrupted
       release_stale_reservations
-      watchful_sleep 30
+      watchful_sleep 5
     end
   end
 
@@ -48,6 +50,8 @@ class Summarizer
   # the work, then releases the reservation.  It constantly does this until
   # there is no more work to do, then sleeps for a bit.
   def process_data
+    log_green "Launching process_data thread (GREEN)"
+    @mongo = Mongo::Connection.new
     while !@interrupted
       doc = reserve_item
       if doc
@@ -65,10 +69,10 @@ class Summarizer
         sleep 0.1 + rand/25
 
         duration = ((Time.now.to_f - starttime) * 10000).round / 10000.0
-        log "Processed => location:#{doc['location']}, date:#{doc['date']} (#{duration} seconds)"
+        log_green "Processed => location:#{doc['location']}, date:#{doc['date']} (#{duration} seconds)"
         release_reservation(doc)
       else
-        log "No work to do.  Sleeping 1 second."
+        log_green "No work to do.  Sleeping 1 second."
         watchful_sleep 1
       end
     end
@@ -101,11 +105,15 @@ class Summarizer
   # should have been done already, but short enough that there won't be a
   # noticeable delay to the end user.
   def release_stale_reservations
+    unreserved_count = @mongo.db('weather').collection('queue').find({:reserved_at=>0}).count
+    reserved_count = @mongo.db('weather').collection('queue').find({:reserved_at=>{:$gt=>0}}).count
+    log_yellow "Unreserved: #{unreserved_count}, Reserved: #{reserved_count}"
+
     res = @mongo.db('weather').collection('queue').update(
-        {:reserved_at=>{:$lt=>Time.now.to_i-30}},
+        {:reserved_at=>{:$lt=>Time.now.to_i-30, :$gt=>0}},
         {:$set=>{:reserved_at=>0}},
         {:multi=>true, :safe=>true});
-    log "Released #{res['n']} stale reservations."
+    log_yellow "Released #{res['n']} stale reservations."
   end
 
   ##########
@@ -121,10 +129,12 @@ class Summarizer
   def log(str)
     puts "#{Time.now.strftime("%Y/%m/%d %H:%M:%S")}> #{str}"
   end
+  def log_yellow(str); log("\x1B[0;33m#{str}\x1B[0m"); end
+  def log_green(str); log("\x1B[0;32m#{str}\x1B[0m"); end
 end
 
 
 # If run from the command line, execute the run method
 if __FILE__ == $0
-  Summarizer.new.run
+  Consumer.new.run
 end

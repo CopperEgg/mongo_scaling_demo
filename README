@@ -1,0 +1,27 @@
+Mongo Scaling Demo
+==================
+
+This is a sample algorithm to demonstrate one way to create an algorithm that:
+  * scales horizontally
+  * is ephemeral
+  * uses MongoDB as a persistent data store
+
+This demo was created to suppliment the talk "Designing Algorithms That Scale
+Horizontally With MongoDB", presented at MongoRaleigh and MongoDallas.
+
+
+GETTING STARTED:
+================
+
+1.  Launch MongoDB locally.
+2.  Run "bundle install" (after installing ruby, rubygems, and the bundler gem)
+3.  Run "ruby consumer.rb" in a terminal
+4.  Run "ruby replayer.rb 10" in another terminal (10 can be changed.  It's the
+       number of weather samples to be written per second.  Increase this and
+       the number of consumers you run to see how the consumer algorithm scales
+       with increased load)
+5.  Run as many consumers in seprate terminals as you want.
+
+You can create and destroy consumer processes at will.  This demonstrates the
+ephemeral nature of this algorithm, and you can also see that as you scale it
+up, each consumer does less work.
