@@ -61,9 +61,9 @@ class Consumer
         @mongo.db('weather').collection('summaries').update(
               {:_id=>doc['location']},
               {:$inc=>{:avg_temp_total=>doc['temp'],
-                      :avg_temp_count=>1,
-                      :avg_dewp_total=>doc['dewp'],
-                      :avg_dewp_count=>1}},
+                       :avg_temp_count=>1,
+                       :avg_dewp_total=>doc['dewp'],
+                       :avg_dewp_count=>1}},
               {:upsert=>true});
         # sleep for a little bit to simulate a workload
         sleep 0.1 + rand/25
